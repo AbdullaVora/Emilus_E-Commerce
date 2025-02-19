@@ -133,7 +133,7 @@ const Cartesian = () => {
             dataIndex: "key",
             key: "srno",
             render: (text, record, index) => (pagination.current - 1) * pagination.pageSize + index + 1,
-        },
+        }, 
         {
             title: "ACTION",
             key: "action",

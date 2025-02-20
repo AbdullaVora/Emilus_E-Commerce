@@ -30,7 +30,7 @@ export const signIn = createAsyncThunk('auth/signIn', async (data, { rejectWithV
 		if (response.data) {
 			const token = response.data.token;
 			// Set token expiration time (1 hour from now)
-			const expiresAt = new Date().getTime() + 60 * 60 * 1000;
+			const expiresAt = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 			localStorage.setItem('AUTH_TOKEN', token);
 			localStorage.setItem('TOKEN_EXPIRES_AT', expiresAt.toString());
 			return token;
@@ -50,7 +50,7 @@ export const signUp = createAsyncThunk('auth/signUp', async (data, { rejectWithV
 		if (response.data) {
 			const token = response.data.token;
 			// Set token expiration time (1 hour from now)
-			const expiresAt = new Date().getTime() + 60 * 60 * 1000;
+			const expiresAt = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 			localStorage.setItem('AUTH_TOKEN', token);
 			localStorage.setItem('TOKEN_EXPIRES_AT', expiresAt.toString());
 			return token;
@@ -175,4 +175,4 @@ const checkTokenExpiration = () => {
 };
 
 // Check token expiration every minute
-setInterval(checkTokenExpiration, 60 * 1000);
+setInterval(checkTokenExpiration, 60 * 60 * 1000);

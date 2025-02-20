@@ -1,26 +1,38 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-// import { AUTH_TOKEN } from 'constants/AuthConstant';
 import api from 'services/MongoService';
+
+// Helper function: Check token expiration
+const isTokenValid = () => {
+	const token = localStorage.getItem('AUTH_TOKEN');
+	const expiresAt = localStorage.getItem('TOKEN_EXPIRES_AT');
+	if (token && expiresAt && new Date().getTime() < parseInt(expiresAt, 10)) {
+		return token;
+	}
+	// Remove expired token if found
+	localStorage.removeItem('AUTH_TOKEN');
+	localStorage.removeItem('TOKEN_EXPIRES_AT');
+	return null;
+};
 
 export const initialState = {
 	loading: false,
 	message: '',
 	showMessage: false,
 	redirect: '',
-	token: localStorage.getItem('AUTH_TOKEN') || null,
+	token: isTokenValid(),
 };
 
 // Sign-in action (using MongoDB API for login)
 export const signIn = createAsyncThunk('auth/signIn', async (data, { rejectWithValue }) => {
 	const { email, password } = data;
-	console.log(data);
 	try {
 		const response = await api.post('/api/auth/login', { email, password });
-
-		console.log(response);
 		if (response.data) {
-			const token = response.data.token;  // Use the first element if the array exists
+			const token = response.data.token;
+			// Set token expiration time (1 hour from now)
+			const expiresAt = new Date().getTime() + 60 * 60 * 1000;
 			localStorage.setItem('AUTH_TOKEN', token);
+			localStorage.setItem('TOKEN_EXPIRES_AT', expiresAt.toString());
 			return token;
 		} else {
 			return rejectWithValue("Invalid email/password");
@@ -33,15 +45,14 @@ export const signIn = createAsyncThunk('auth/signIn', async (data, { rejectWithV
 // Sign-up action (using MongoDB API for registration)
 export const signUp = createAsyncThunk('auth/signUp', async (data, { rejectWithValue }) => {
 	const { email, password } = data;
-	console.log(data);
-
 	try {
-		const response = await api.post('/api/auth/register', { email, password });  // MongoDB API register
-
-		console.log(response.data);
+		const response = await api.post('/api/auth/register', { email, password });
 		if (response.data) {
-			const token = response.data.token;  // Adjust according to your MongoDB API response
+			const token = response.data.token;
+			// Set token expiration time (1 hour from now)
+			const expiresAt = new Date().getTime() + 60 * 60 * 1000;
 			localStorage.setItem('AUTH_TOKEN', token);
+			localStorage.setItem('TOKEN_EXPIRES_AT', expiresAt.toString());
 			return token;
 		} else {
 			return rejectWithValue(response.message || 'Registration failed');
@@ -56,27 +67,15 @@ export const signOut = createAsyncThunk('auth/signOut', async (_, { rejectWithVa
 	try {
 		const token = localStorage.getItem('AUTH_TOKEN');
 		if (!token) return { message: "No token found" };
-
-		// Remove token from localStorage BEFORE API call
+		// Remove token and expiration before API call
 		localStorage.removeItem('AUTH_TOKEN');
-
-		const response = await api.post('/api/auth/signOut', { token }); // Fix: Send as an object
-
+		localStorage.removeItem('TOKEN_EXPIRES_AT');
+		const response = await api.post('/api/auth/signOut', { token });
 		return response.data;
 	} catch (error) {
 		return rejectWithValue(error.message || 'Error signing out');
 	}
 });
-
-// export const addToken = createAsyncThunk('/auth/token', async (addToken, { rejectWithValue }) => {
-// 	try {
-// 		const response = fetch(`${api}/${endpoint}`)
-// 	} catch (error) {
-// 		return rejectWithValue(error.message);
-// 	}
-// })
-
-
 
 // Reducer slice for authentication logic
 export const authSlice = createSlice({
@@ -161,3 +160,19 @@ export const {
 } = authSlice.actions;
 
 export default authSlice.reducer;
+
+// ------------------------------
+// Automatic Token Expiration Check
+// ------------------------------
+const checkTokenExpiration = () => {
+	const expiresAt = localStorage.getItem('TOKEN_EXPIRES_AT');
+	if (expiresAt && new Date().getTime() > parseInt(expiresAt, 10)) {
+		localStorage.removeItem('AUTH_TOKEN');
+		localStorage.removeItem('TOKEN_EXPIRES_AT');
+		// Optional: reload the page to update app state
+		window.location.reload();
+	}
+};
+
+// Check token expiration every minute
+setInterval(checkTokenExpiration, 60 * 1000);
